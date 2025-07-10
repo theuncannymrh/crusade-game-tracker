@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crusade Tracker</title>
+    <style>
+        :root {
+            /* Dark Mode Variables - These are the consistent theme */
+            --body-bg: #222831;
+            --container-bg: #393e46;
+            --container-border: #4a4f56;
+            --text-color: #eeeeee;
+            --heading-color: #00adb5;
+            --input-border: #555;
+            --input-focus-border: #00adb5;
+            --list-item-border: #444;
+            --counter-bg: #4a4f56;
+            --counter-border: #5c626b;
+            --counter-label-color: #bbbbbb;
+            --counter-value-color: #00e0ea;
+            --counter-btn-bg: #5c626b;
+            --counter-btn-border: #6d737e;
+            --counter-btn-hover-bg: #6d737e;
+            --counter-btn-hover-border: #7e8590;
+            --checkbox-label-color: #bbbbbb;
+            --summary-item-border: #555;
+            --summary-text-color: #dddddd;
+            --empty-message-color: #aaaaaa;
+            --destroyed-bg-color: #4a3e3e; /* Subtle red for destroyed units */
+            --destroyed-border-color: #6a4e4e;
+
+            /* Button Colors */
+            --add-btn-bg: #00adb5;
+            --add-btn-hover-bg: #008f96;
+            --summary-btn-bg: #20c997;
+            --summary-btn-hover-bg: #1aa079;
+            --reset-btn-bg: #e04a4a;
+            --reset-btn-hover-bg: #d03030;
+            --toggle-btn-bg: #7499ae;
+            --toggle-btn-hover-bg: #64899e;
+            --clear-totals-btn-bg: #ffc107;
+            --clear-totals-btn-hover-bg: #e0a800;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease; /* For initial load consistency */
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: var(--container-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--container-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        h1 {
+            color: var(--heading-color);
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 2.2em;
+            font-weight: 700;
+        }
+
+        /* Top & Bottom Button Group Styles */
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px; /* Spacing below the group */
+            flex-wrap: wrap;
+        }
+        .button-group.bottom-group {
+            margin-top: 25px; /* Spacing above the bottom group */
+            margin-bottom: 0;
+        }
+        .button-group button {
+            flex: 1 1 calc(50% - 7.5px); /* Half width for two buttons with gap */
+            max-width: calc(50% - 7.5px); /* Prevent growing beyond half */
+            padding: 12px 15px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            text-align: center;
+        }
+
+        /* Specific Button Colors/Behaviors */
+        #entryToggleBtn { background-color: var(--toggle-btn-bg); }
+        #entryToggleBtn:hover { background-color: var(--toggle-btn-hover-bg); }
+        #summaryBtn { background-color: var(--summary-btn-bg); }
+        #summaryBtn:hover { background-color: var(--summary-btn-hover-bg); }
+        #addItemBtn { background-color: var(--add-btn-bg); }
+        #addItemBtn:hover { background-color: var(--add-btn-hover-bg); }
+        #clearTotalsBtn { background-color: var(--clear-totals-btn-bg); color: var(--text-color); }
+        #clearTotalsBtn:hover { background-color: var(--clear-totals-btn-hover-bg); }
+        #resetBtn { background-color: var(--reset-btn-bg); }
+        #resetBtn:hover { background-color: var(--reset-btn-hover-bg); }
+        .button-group button:active { transform: translateY(0); } /* Consistent active state */
+
+        /* Input Section Toggle Styles */
+        .input-section {
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: opacity 0.3s ease, max-height 0.3s ease, margin-bottom 0.3s ease;
+            overflow: hidden;
+            max-height: 200px; /* Max height when visible */
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .input-section.hidden {
+            opacity: 0;
+            max-height: 0; /* Collapse height */
+            margin-bottom: 0; /* Remove margin to reduce space */
+            pointer-events: none; /* Prevent interaction when hidden */
+            display: none; /* Finally hide it from layout after transition */
+        }
+        .input-section textarea {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            font-size: 1em;
+            outline: none;
+            min-height: 80px;
+            resize: vertical;
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+            font-family: inherit;
+        }
+        .input-section textarea::placeholder { color: var(--empty-message-color); }
+        .input-section textarea:focus { border-color: var(--input-focus-border); }
+
+        /* Main List Styles */
+        .list-container {
+            border-top: 1px solid var(--list-item-border);
+            padding-top: 20px;
+        }
+        .list-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--list-item-border);
+            gap: 20px;
+            transition: background-color 0.3s ease; /* Smooth transition for destroyed color */
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item.destroyed {
+            background-color: var(--destroyed-bg-color);
+            border-bottom: 1px solid var(--destroyed-border-color);
+        }
+        .list-item.destroyed .item-text,
+        .list-item.destroyed .counter-label,
+        .list-item.destroyed .counter-value,
+        .list-item.destroyed .checkbox-label {
+            color: var(--text-color);
+        }
+        .item-text {
+            flex-basis: 30%; min-width: 150px; font-size: 1.1em; color: var(--heading-color); font-weight: 500;
+        }
+
+        /* Counter Group & Individual Counter Styles */
+        .counter-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-basis: 55%;
+            min-width: 350px;
+        }
+        .counter {
+            display: flex; align-items: center; gap: 8px; background-color: var(--counter-bg);
+            border: 1px solid var(--counter-border); border-radius: 6px; padding: 8px 12px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .counter-label { font-size: 0.9em; color: var(--counter-label-color); font-weight: 600; }
+        .counter-value { font-size: 1.1em; font-weight: bold; color: var(--counter-value-color); min-width: 25px; text-align: center; }
+        .counter button {
+            background-color: var(--counter-btn-bg); color: var(--text-color); border: 1px solid var(--counter-btn-border);
+            border-radius: 50%; width: 28px; height: 28px; display: flex; justify-content: center; align-items: center;
+            font-size: 1.2em; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.3s ease;
+        }
+        .counter button:hover { background-color: var(--counter-btn-hover-bg); border-color: var(--counter-btn-hover-border); }
+        .counter button:active { background-color: #c0c0c0; color: #333; }
+
+        /* Destroyed Checkbox & Delete Button Styles */
+        .destroyed-checkbox {
+            display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 100px;
+        }
+        .destroyed-checkbox input[type="checkbox"] { transform: scale(1.3); cursor: pointer; }
+        .destroyed-checkbox label { font-size: 1em; color: var(--checkbox-label-color); cursor: pointer; }
+        .delete-btn {
+            background-color: var(--reset-btn-bg); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+            font-size: 0.9em; font-weight: 600; transition: background-color 0.3s ease, transform 0.1s ease; margin-left: 10px;
+        }
+        .delete-btn:hover { background-color: var(--reset-btn-hover-bg); transform: translateY(-1px); }
+        .delete-btn:active { transform: translateY(0); }
+
+        /* Modal Styles - CRITICAL FOR CLOSING */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 10000; /* Ensure it's on top of EVERYTHING */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.6); /* Semi-transparent black background */
+            backdrop-filter: blur(5px); /* Blurry background effect */
+            -webkit-backdrop-filter: blur(5px);
+            padding-top: 60px; /* Space from top */
+            /* Ensure it covers the whole screen and is clickable */
+            pointer-events: auto; /* Re-enable pointer events on the modal backdrop */
+        }
+        .modal-content {
+            background-color: var(--container-bg);
+            margin: 5% auto; /* 5% from top and centered */
+            padding: 30px;
+            border: 1px solid var(--container-border);
+            border-radius: 12px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); /* Stronger shadow for pop-up effect */
+            position: relative;
+            z-index: 10001; /* Content must be on top of the modal background */
+            pointer-events: auto; /* Ensure content inside is clickable */
+        }
+        .close-button {
+            color: var(--empty-message-color);
+            font-size: 32px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 10002; /* Ensure close button is highest and clickable */
+            pointer-events: auto; /* Explicitly enable pointer events on close button */
+        }
+        .close-button:hover, .close-button:focus { color: var(--heading-color); }
+        .modal-content h2 {
+            text-align: center; color: var(--heading-color); margin-bottom: 5px;
+            font-size: 1.8em; font-weight: 700;
+        }
+        .modal-subtitle {
+            text-align: center; font-size: 0.9em; color: var(--empty-message-color); margin-bottom: 20px;
+        }
+        .summary-item {
+            padding: 8px 0; border-bottom: 1px dashed var(--summary-item-border); display: flex;
+            justify-content: space-between; align-items: center; font-size: 1.05em;
+        }
+        .summary-item:last-child { border-bottom: none; }
+        .summary-item span { font-weight: 500; }
+        .summary-item .stats { font-size: 0.95em; color: var(--summary-text-color); }
+        .summary-empty-message { text-align: center; color: var(--empty-message-color); padding: 20px; }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .list-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .item-text, .counter-group, .destroyed-checkbox, .delete-btn {
+                flex-basis: auto; width: 100%; min-width: auto; margin-left: 0;
+            }
+            .counter-group { justify-content: space-around; }
+            .destroyed-checkbox { justify-content: flex-start; }
+            .delete-btn { align-self: flex-end; width: auto; }
+            .button-group, .input-section-buttons, .summary-actions { /* Universal stacking for button groups */
+                flex-direction: column; align-items: stretch;
+            }
+            .button-group button, .input-section-buttons button, .summary-actions button {
+                flex: 1 1 auto; max-width: 100%; /* Ensure full width */
+            }
+            .modal-content {
+                margin: 20px auto; /* More space on small screens */
+                width: 90%;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-mode">
+
+    <div class="container">
+        <h1>Crusade Tracker</h1>
+
+        <div class="input-section" id="inputSection">
+            <textarea id="newItemInput" placeholder="Enter new entries, one per line..."></textarea>
+            <div class="button-group input-section-buttons">
+                <button id="addItemBtn">Add Entries</button>
+                <button id="summaryBtn">Game Summary</button>
+            </div>
+        </div>
+
+        <div class="list-container" id="listContainer">
+            </div>
+
+        <div class="button-group bottom-group">
+            <button id="entryToggleBtn">Hide Unit Entry</button>
+            <button id="clearTotalsBtn">Clear Totals</button>
+            <button id="resetBtn">Clear All Entries</button>
+        </div>
+    </div>
+
+    <div id="summaryModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="modalCloseButton">&times;</span> <h2 id="summaryHeader">Game Summary</h2>
+            <p class="modal-subtitle">(Automatically copied to clipboard)</p>
+            <div id="summaryContent">
+                </div>
+            <div class="summary-actions"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Element References
+        const newItemInput = document.getElementById('newItemInput');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const listContainer = document.getElementById('listContainer');
+        const resetBtn = document.getElementById('resetBtn');
+        const summaryBtn = document.getElementById('summaryBtn');
+        const entryToggleBtn = document.getElementById('entryToggleBtn');
+        const inputSection = document.getElementById('inputSection');
+        const clearTotalsBtn = document.getElementById('clearTotalsBtn');
+
+        const summaryModal = document.getElementById('summaryModal');
+        const modalCloseButton = document.getElementById('modalCloseButton'); // Direct reference to the 'X'
+        const summaryContent = document.getElementById('summaryContent');
+
+        let trackerItems = [];
+        let isEntrySectionVisible = true;
+
+        // --- Core Data & Render Functions ---
+
+        function saveData() {
+            localStorage.setItem('crusadeTrackerData', JSON.stringify(trackerItems));
+        }
+
+        function loadData() {
+            const storedData = localStorage.getItem('crusadeTrackerData');
+            if (storedData) {
+                trackerItems = JSON.parse(storedData);
+            }
+        }
+
+        function sortTrackerItems() {
+            trackerItems.sort((a, b) => {
+                if (a.destroyed && !b.destroyed) return 1;
+                if (!a.destroyed && b.destroyed) return -1;
+                return a.text.localeCompare(b.text);
+            });
+        }
+
+        function renderList() {
+            sortTrackerItems();
+            listContainer.innerHTML = '';
+            if (trackerItems.length === 0) {
+                listContainer.innerHTML = '<p class="summary-empty-message">No entries yet. Add your first monster!</p>';
+                return;
+            }
+
+            trackerItems.forEach((item, index) => {
+                const listItemDiv = document.createElement('div');
+                listItemDiv.classList.add('list-item');
+                if (item.destroyed) {
+                    listItemDiv.classList.add('destroyed');
+                }
+                listItemDiv.dataset.index = index;
+
+                const itemText = document.createElement('span');
+                itemText.classList.add('item-text');
+                itemText.textContent = item.text;
+                listItemDiv.appendChild(itemText);
+
+                const counterGroup = document.createElement('div');
+                counterGroup.classList.add('counter-group');
+
+                const xpCounterDiv = document.createElement('div');
+                xpCounterDiv.classList.add('counter');
+                xpCounterDiv.innerHTML = `
+                    <span class="counter-label">XP:</span>
+                    <button class="decrement-btn" data-type="xp" data-index="${index}">-</button>
+                    <span class="counter-value" id="xp-value-${index}">${item.xp}</span>
+                    <button class="increment-btn" data-type="xp" data-index="${index}">+</button>
+                `;
+                counterGroup.appendChild(xpCounterDiv);
+
+                const killsCounterDiv = document.createElement('div');
+                killsCounterDiv.classList.add('counter');
+                killsCounterDiv.innerHTML = `
+                    <span class="counter-label">Kills:</span>
+                    <button class="decrement-btn" data-type="kills" data-index="${index}">-</button>
+                    <span class="counter-value" id="kills-value-${index}">${item.kills}</span>
+                    <button class="increment-btn" data-type="kills" data-index="${index}">+</button>
+                `;
+                counterGroup.appendChild(killsCounterDiv);
+
+                listItemDiv.appendChild(counterGroup);
+
+                const destroyedCheckboxDiv = document.createElement('div');
+                destroyedCheckboxDiv.classList.add('destroyed-checkbox');
+                const destroyedInput = document.createElement('input');
+                destroyedInput.type = 'checkbox';
+                destroyedInput.id = `destroyed-${index}`;
+                destroyedInput.checked = item.destroyed;
+
+                const destroyedLabel = document.createElement('label');
+                destroyedLabel.htmlFor = `destroyed-${index}`;
+                destroyedLabel.textContent = 'Destroyed';
+
+                destroyedInput.addEventListener('change', (event) => {
+                    trackerItems[index].destroyed = event.target.checked;
+                    saveData();
+                    renderList();
+                });
+
+                destroyedCheckboxDiv.appendChild(destroyedInput);
+                destroyedCheckboxDiv.appendChild(destroyedLabel);
+                listItemDiv.appendChild(destroyedCheckboxDiv);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('delete-btn');
+                deleteButton.textContent = 'Delete';
+                listItemDiv.appendChild(deleteButton);
+
+                listContainer.appendChild(listItemDiv);
+            });
+
+            listContainer.removeEventListener('click', handleListContainerClick);
+            listContainer.addEventListener('click', handleListContainerClick);
+        }
+
+        // --- Event Delegation Handlers ---
+
+        function handleListContainerClick(event) {
+            const target = event.target;
+
+            if (target.classList.contains('increment-btn') || target.classList.contains('decrement-btn')) {
+                const type = target.dataset.type;
+                const index = parseInt(target.dataset.index);
+                if (isNaN(index) || index < 0 || index >= trackerItems.length) return;
+
+                const item = trackerItems[index];
+                if (target.classList.contains('increment-btn')) {
+                    item[type]++;
+                } else if (target.classList.contains('decrement-btn')) {
+                    if (item[type] > 0) item[type]--;
+                }
+                document.getElementById(`${type}-value-${index}`).textContent = item[type];
+                saveData();
+            } else if (target.classList.contains('delete-btn')) {
+                const listItem = target.closest('.list-item');
+                if (listItem) {
+                    const index = parseInt(listItem.dataset.index);
+                    if (!isNaN(index)) deleteItem(index);
+                }
+            }
+        }
+
+        // --- Action Buttons Logic ---
+
+        function addItemsFromInput() {
+            const inputText = newItemInput.value.trim();
+            if (inputText) {
+                const newItems = inputText.split('\n').map(line => line.trim()).filter(line => line !== '');
+                newItems.forEach(itemText => {
+                    trackerItems.push({ text: itemText, xp: 0, kills: 0, destroyed: false });
+                });
+                newItemInput.value = '';
+                saveData();
+                renderList();
+            }
+        }
+
+        function deleteItem(indexToDelete) {
+            trackerItems.splice(indexToDelete, 1);
+            saveData();
+            renderList();
+        }
+
+        function resetTracker() {
+            const confirmation = confirm("Are you sure you want to clear ALL entries? This action cannot be undone.");
+            if (confirmation) {
+                trackerItems = [];
+                saveData();
+                renderList();
+            }
+        }
+
+        function clearTotals() {
+            const confirmation = confirm("Are you sure you want to clear all XP, Kills, and 'Destroyed' statuses? Entries will remain.");
+            if (confirmation) {
+                trackerItems.forEach(item => {
+                    item.xp = 0;
+                    item.kills = 0;
+                    item.destroyed = false;
+                });
+                saveData();
+                renderList();
+            }
+        }
+
+        // --- Summary Modal Logic ---
+
+        function generateSummaryText() {
+            const currentDate = new Date();
+            const dateString = currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            let summaryText = `Crusade Game Tracker - ${dateString}\n\n`;
+            if (trackerItems.length === 0) {
+                summaryText += "No entries to summarize yet.";
+            } else {
+                const sortedForSummary = [...trackerItems].sort((a, b) => {
+                    if (a.destroyed && !b.destroyed) return 1;
+                    if (!a.destroyed && b.destroyed) return -1;
+                    return a.text.localeCompare(b.text);
+                });
+                sortedForSummary.forEach(item => {
+                    summaryText += `${item.text}\n`;
+                    summaryText += `  XP: ${item.xp} | Kills: ${item.kills} | Destroyed: ${item.destroyed ? 'Yes' : 'No'}\n\n`;
+                });
+            }
+            return summaryText.trim();
+        }
+
+        function showSummary() {
+            summaryContent.innerHTML = '';
+            if (trackerItems.length === 0) {
+                summaryContent.innerHTML = '<p class="summary-empty-message">No entries to summarize yet.</p>';
+            } else {
+                const sortedForDisplay = [...trackerItems].sort((a, b) => {
+                    if (a.destroyed && !b.destroyed) return 1;
+                    if (!a.destroyed && b.destroyed) return -1;
+                    return a.text.localeCompare(b.text);
+                });
+                sortedForDisplay.forEach(item => {
+                    const summaryItemDiv = document.createElement('div');
+                    summaryItemDiv.classList.add('summary-item');
+                    summaryItemDiv.innerHTML = `
+                        <span>${item.text}</span>
+                        <span class="stats">XP: ${item.xp} | Kills: ${item.kills} | Destroyed: ${item.destroyed ? 'Yes' : 'No'}</span>
+                    `;
+                    summaryContent.appendChild(summaryItemDiv);
+                });
+            }
+            summaryModal.style.display = 'block'; // Show the modal
+            copySummaryToClipboard(true); // Auto-copy on open
+        }
+
+        function hideSummary() {
+            summaryModal.style.display = 'none'; // Hide the modal
+        }
+
+        // --- Copy to Clipboard Function ---
+
+        async function copySummaryToClipboard(suppressAlert = false) {
+            const summaryText = generateSummaryText();
+            try {
+                await navigator.clipboard.writeText(summaryText);
+                if (!suppressAlert) alert('Summary copied to clipboard!');
+            } catch (err) {
+                console.warn('Modern Clipboard API failed, falling back:', err);
+                const textarea = document.createElement('textarea');
+                textarea.value = summaryText;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        if (!suppressAlert) alert('Summary copied to clipboard (fallback method)!');
+                    } else {
+                        throw new Error('execCommand("copy") failed');
+                    }
+                } catch (fallbackErr) {
+                    console.error('Fallback clipboard copy failed:', fallbackErr);
+                    alert('Failed to copy summary. Your browser might not support automatic copying. Please select the text in the summary window and copy manually.');
+                } finally {
+                    document.body.removeChild(textarea);
+                }
+            }
+        }
+
+        // --- Entry Section Toggle ---
+
+        function toggleEntrySection() {
+            isEntrySectionVisible = !isEntrySectionVisible;
+            if (isEntrySectionVisible) {
+                inputSection.style.display = 'flex';
+                setTimeout(() => { inputSection.classList.remove('hidden'); }, 10);
+                entryToggleBtn.textContent = 'Hide Unit Entry';
+            } else {
+                inputSection.classList.add('hidden');
+                entryToggleBtn.textContent = 'Show Unit Entry';
+                setTimeout(() => { inputSection.style.display = 'none'; }, 300);
+            }
+        }
+
+        // --- Event Listeners ---
+
+        addItemBtn.addEventListener('click', addItemsFromInput);
+        newItemInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                addItemsFromInput();
+            }
+        });
+        resetBtn.addEventListener('click', resetTracker);
+        clearTotalsBtn.addEventListener('click', clearTotals);
+        summaryBtn.addEventListener('click', showSummary);
+        entryToggleBtn.addEventListener('click', toggleEntrySection);
+
+        // Modal Closing Event Listeners (attached to the correct elements after they exist)
+        modalCloseButton.addEventListener('click', hideSummary); // The 'X' button
+        summaryModal.addEventListener('click', (event) => { // Click anywhere on the modal background
+            if (event.target === summaryModal) { // Ensure click is specifically on the background
+                hideSummary();
+            }
+        });
+        window.addEventListener('keydown', (event) => { // Escape key
+            if (event.key === 'Escape' && summaryModal.style.display === 'block') {
+                hideSummary();
+            }
+        });
+
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderList();
+            // Ensure input section state is correct on load
+            if (isEntrySectionVisible) {
+                inputSection.classList.remove('hidden');
+                inputSection.style.display = 'flex';
+                entryToggleBtn.textContent = 'Hide Unit Entry';
+            } else {
+                 inputSection.classList.add('hidden');
+                 inputSection.style.display = 'none';
+                 entryToggleBtn.textContent = 'Show Unit Entry';
+            }
+        });
+    </script>
+</body>
+</html>
